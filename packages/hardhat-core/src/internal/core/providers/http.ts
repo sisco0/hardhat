@@ -115,7 +115,7 @@ export class HttpProvider extends EventEmitter implements EIP1193Provider {
     retryNumber = 0
   ): Promise<JsonRpcResponse | JsonRpcResponse[]> {
     const { default: fetch } = await import("node-fetch");
-
+    const errorBefore = new Error();
     try {
       const response = await fetch(this._url, {
         method: "POST",
@@ -155,6 +155,12 @@ export class HttpProvider extends EventEmitter implements EIP1193Provider {
           { network: this._networkName },
           error
         );
+      }
+
+      if (error.code === "ETIMEDOUT") {
+        console.log(error);
+        console.log(errorBefore);
+        throw error;
       }
 
       if (error.type === "request-timeout") {
