@@ -2,7 +2,7 @@ import chalk from "chalk";
 import path from "path";
 
 import { HARDHAT_NETWORK_NAME } from "../internal/constants";
-import { subtask, task } from "../internal/core/config/config-env";
+import { subtask, task, types } from "../internal/core/config/config-env";
 import { isRunningWithTypescript } from "../internal/core/typescript-support";
 import { getForkCacheDirPath } from "../internal/hardhat-network/provider/utils/disk-cache";
 import { showForkRecommendationsBannerIfNecessary } from "../internal/hardhat-network/provider/utils/fork-recomendations-banner";
@@ -43,22 +43,28 @@ subtask(TASK_TEST_GET_TEST_FILES)
 subtask(TASK_TEST_SETUP_TEST_ENVIRONMENT, async () => {});
 
 subtask(TASK_TEST_RUN_MOCHA_TESTS)
+  .addOptionalParam("grep", undefined, undefined, types.string)
   .addOptionalVariadicPositionalParam(
     "testFiles",
     "An optional list of files to test",
     []
   )
-  .setAction(async ({ testFiles }: { testFiles: string[] }, { config }) => {
-    const { default: Mocha } = await import("mocha");
-    const mocha = new Mocha(config.mocha);
-    testFiles.forEach((file) => mocha.addFile(file));
+  .setAction(
+    async (
+      { testFiles, grep }: { testFiles: string[]; grep: string },
+      { config }
+    ) => {
+      const { default: Mocha } = await import("mocha");
+      const mocha = new Mocha(config.mocha);
+      testFiles.forEach((file) => mocha.addFile(file));
 
-    const testFailures = await new Promise<number>((resolve, _) => {
-      mocha.run(resolve);
-    });
+      const testFailures = await new Promise<number>((resolve, _) => {
+        mocha.run(resolve);
+      });
 
-    return testFailures;
-  });
+      return testFailures;
+    }
+  );
 
 subtask(TASK_TEST_RUN_SHOW_FORK_RECOMMENDATIONS).setAction(
   async (_, { config, network }) => {
@@ -72,6 +78,7 @@ subtask(TASK_TEST_RUN_SHOW_FORK_RECOMMENDATIONS).setAction(
 );
 
 task(TASK_TEST, "Runs mocha tests")
+  .addOptionalParam("grep", undefined, undefined, types.string)
   .addOptionalVariadicPositionalParam(
     "testFiles",
     "An optional list of files to test",
@@ -82,9 +89,11 @@ task(TASK_TEST, "Runs mocha tests")
     async (
       {
         testFiles,
+        grep,
         noCompile,
       }: {
         testFiles: string[];
+        grep: string;
         noCompile: boolean;
       },
       { run, network }
@@ -101,6 +110,7 @@ task(TASK_TEST, "Runs mocha tests")
 
       const testFailures = await run(TASK_TEST_RUN_MOCHA_TESTS, {
         testFiles: files,
+        grep: { grep },
       });
 
       if (network.name === HARDHAT_NETWORK_NAME) {
